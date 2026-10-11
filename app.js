@@ -91,6 +91,11 @@ function status(msg){$('status').textContent=msg;}
 function count(n){return Number(n).toLocaleString('es-ES');}
 function formatTime(ms){return ms<1000?`${Math.round(ms)} ms`:`${(ms/1000).toLocaleString('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1})} s`;}
 function sourceName(){return sources[$('source').value];}
+function visibleQaBox(){const size=map.getSize();if(!size||size[0]<=0||size[1]<=0)return null;const bbox=transformExtent(map.getView().calculateExtent(size),'EPSG:3857','EPSG:4326');const box=[Math.max(bbox[0],validExtent[0]),Math.max(bbox[1],validExtent[1]),Math.min(bbox[2],validExtent[2]),Math.min(bbox[3],validExtent[3])];return box[0]<box[2]&&box[1]<box[3]?box:null;}
+function qaAreaKm2(box){if(!box)return 0;const mid=(box[1]+box[3])*Math.PI/360;return (box[2]-box[0])*(box[3]-box[1])*111.32**2*Math.cos(mid);}
+function updateRemoteAreaWarning(){const source=$('source').value;const area=qaAreaKm2(visibleQaBox());const warning=$('remoteAreaWarning');warning.hidden=source==='local'||area<10000;if(!warning.hidden)warning.textContent=`Zona amplia (aprox. ${Math.round(area).toLocaleString('es-ES')} km²): ${source==='ign'?'IGN XYZ puede requerir muchas teselas':'el COG de Hugging Face puede requerir muchas lecturas remotas'} y tardar bastante. Puedes analizarla igualmente.`;}
+map.on('moveend',updateRemoteAreaWarning);
+map.on('change:size',updateRemoteAreaWarning);
 function itemStatus(message){$('itemStatus').textContent=message;}
 function updateMapSize(){requestAnimationFrame(()=>map.updateSize());}
 function openSettings(){if(busy)return;$('drawerSourceName').textContent=sourceName();$('settingsDrawer').hidden=false;$('drawerBackdrop').hidden=false;$('closeSettings').focus();}
@@ -126,7 +131,7 @@ $('threshold').addEventListener('input',()=>{resultLayer.updateStyleVariables({t
 function applyField(id,value){const field=$(id);if(field.type==='checkbox'){if(typeof value==='boolean')field.checked=value;return;}if(typeof value==='string'&&Array.from(field.options).some(option=>option.value===value))field.value=value;}
 function restoreSettings(){let saved={};try{saved=JSON.parse(localStorage.getItem(settingsKey))||{};}catch(e){}for(const id of Object.keys(modeDefaults))applyField(id,saved[id]??modeDefaults[id]);}
 function saveSettings(){const values={};for(const id of Object.keys(modeDefaults)){const field=$(id);values[id]=field.type==='checkbox'?field.checked:field.value;}try{localStorage.setItem(settingsKey,JSON.stringify(values));}catch(e){}}
-function showMode(){const selected=$('source').value;for(const mode of Object.keys(modeFields))$(`${mode}Settings`).hidden=selected!==mode;$('drawerSourceName').textContent=sourceName();}
+function showMode(){const selected=$('source').value;for(const mode of Object.keys(modeFields))$(`${mode}Settings`).hidden=selected!==mode;$('drawerSourceName').textContent=sourceName();updateRemoteAreaWarning();}
 function trimModeCache(mode){const store=cache[mode];if(!store)return;const max=Number($(`${mode}Cache`).value);while(store.size>max)store.delete(store.keys().next().value);}
 function resetPool(){const previous=localPool;localPool=null;localPoolSize=0;poolFailed=false;if(previous)previous.destroy().catch(()=>{});}
 function settingsChanged(id){if(id==='localWorkers')resetPool();if(id==='localWindow')cache.local.clear();clearDraw();clearItem();renderDraw();const mode=Object.entries(modeFields).find(([,fields])=>fields.includes(id))?.[0];if(mode&&id.endsWith('Cache'))trimModeCache(mode);saveSettings();resetAnalysis();status(`Configuración de ${sources[mode]} actualizada. Pulsa «Analizar zona visible».`);}
@@ -262,16 +267,15 @@ async function fetchPostpass(bbox,signal,filters){const [w,s,e,n]=bbox;const cla
 function setBusy(state){busy=state;$('analyze').disabled=state;$('analyzeItem').disabled=state;$('nearbyToggle').disabled=state;$('source').disabled=state;$('openSettings').disabled=state;for(const tab of document.querySelectorAll('[data-tool]'))tab.disabled=state;for(const section of document.querySelectorAll('.mode-settings'))for(const field of section.querySelectorAll('select,input,button'))field.disabled=state;$('cancel').hidden=!(state&&currentTool==='qa');$('cancelItem').hidden=!(state&&currentTool==='item');}
 async function analyze(){
 if(busy)return;
-if(compactLayout.matches)displayTools(false);
 if(!coverage.length){status('La cobertura MDT05 todavía no está disponible.');return;}
-const extent=map.getView().calculateExtent(map.getSize());
-const bbox=transformExtent(extent,'EPSG:3857','EPSG:4326');
-const box=[Math.max(bbox[0],validExtent[0]),Math.max(bbox[1],validExtent[1]),Math.min(bbox[2],validExtent[2]),Math.min(bbox[3],validExtent[3])];
-if(box[0]>=box[2]||box[1]>=box[3]){status('La zona visible queda fuera de la extensión MDT05.');return;}
+const box=visibleQaBox();
+if(!box){status('La zona visible queda fuera de la extensión MDT05.');return;}
 const source=$('source').value;
 let filters;
 try{filters=getFilters();}catch(err){status(err.message);return;}
 if(source==='local'&&!localFile){status('Selecciona un GeoTIFF local antes de analizar.');openSettings();return;}
+if(source!=='local'&&qaAreaKm2(box)>=10000&&!window.confirm(`La zona visible abarca aproximadamente ${Math.round(qaAreaKm2(box)).toLocaleString('es-ES')} km². ${source==='ign'?'IGN XYZ puede necesitar descargar muchas teselas':'El COG de Hugging Face puede necesitar numerosas lecturas remotas'} y el análisis podría tardar mucho o fallar. ¿Quieres continuar de todas formas?`))return;
+if(compactLayout.matches)displayTools(false);
 setBusy(true);
 resetAnalysis();
 const abort=new AbortController();
