@@ -2,3 +2,47 @@
 .draw-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}.draw-actions button{min-width:0;padding:10px 6px}.drawing-on{background:#f3cc7d;border-color:#f3cc7d}.drawing-active #map{cursor:crosshair}#drawStatus{margin-top:13px;min-height:36px}
 .nearby-block{margin:12px 0 4px}.nearby-block #nearbyToggle{margin-top:0}.nearby-active{border-color:#6ac6cc;background:#234740;color:#d6f8fc}.nearby-results{margin-top:10px;border:1px solid #3b5948;border-radius:5px;max-height:min(43vh,360px);overflow-y:auto}.nearby-heading{padding:8px 10px;color:#a6cdb4;font-size:12px;background:#1c3426;border-bottom:1px solid #365140}.nearby-row{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;padding:10px 11px;min-height:52px;background:#13261c;border:0;border-bottom:1px solid #314738;color:#dcebe0;text-align:left;overflow-wrap:anywhere}.nearby-row:last-child{border-bottom:0}.nearby-row:hover,.nearby-row:focus-visible{background:#2b4834}.nearby-row strong{font-size:12px;line-height:1.35}.nearby-row span{font-size:11px;color:#aac8b3}.nearby-selecting #map{cursor:crosshair}@media(max-width:690px),(max-height:520px) and (pointer:coarse){.nearby-results{max-height:40dvh}.nearby-row{min-height:48px}.nearby-block #nearbyToggle{min-height:44px}}
 .area-warning{margin:10px 0;padding:9px 10px;background:#342e1f;border-left:3px solid #e6ae62;color:#f4d8a6;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.lidar50-panel{display:flex;flex-direction:column;align-items:flex-start;gap:5px;flex:1 1 100%;min-width:0;border-top:1px solid #3e5b48;padding:9px 0 4px;margin-top:7px;font-size:12px;overflow-wrap:anywhere}.lidar50-panel strong{font-size:12px;color:#c6efdc}.lidar50-info{font-size:11px;color:#a5c3ac}.lidar50-panel a{font-size:12px}.lidar50-button{padding:9px 10px;min-height:38px;max-width:100%;font-size:12px;cursor:pointer}.lidar50-result{font-size:12px;color:#b4ecc3;font-variant-numeric:tabular-nums}.lidar50-result:empty{display:none}#selectedSample .lidar50-panel{margin-top:12px;padding:9px 0}.item-summary>.lidar50-panel{width:100%}
+.lidar50-change{border:0;background:transparent;color:#b4dac0;padding:1px 0;min-height:25px;font-size:11px;text-decoration:underline;cursor:pointer}.lidar50-change:hover{color:#e2ffe9}
+.popup{width:min(430px,calc(100% - 32px));padding:15px 11px 13px 16px;line-height:1.5}
+.popup strong{font-size:14px}
+.popup .popup-actions a{font-size:13px}
+.lidar50-panel{align-items:stretch;gap:9px;padding:13px 0 5px;margin-top:12px;font-size:14px;line-height:1.45}
+.lidar50-panel strong{font-size:15px}
+.lidar50-sheet{font-weight:800;font-size:22px;color:#e9f7e9;line-height:1.2;letter-spacing:.3px}
+.lidar50-help{font-size:13px;color:#c4d9ca}
+.lidar50-reference{font-size:13px;color:#e6f2e8;background:#213b2b;border:1px solid #4f755b;padding:9px;border-radius:5px;overflow-wrap:anywhere}
+.lidar50-search{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.lidar50-search a{font-size:14px}
+.lidar50-action{background:#254534;color:#e2f4e7;border:1px solid #739b7a;border-radius:5px;padding:9px 12px;font-size:13px;min-height:40px}
+.lidar50-primary{background:#85d4a4;color:#082515;font-size:14px;font-weight:700;border:0;border-radius:5px;padding:12px;width:100%;min-height:45px}
+.lidar50-primary:disabled{opacity:.6;cursor:wait}
+.lidar50-change{font-size:13px;align-self:flex-start;min-height:32px}
+.lidar50-result{font-size:14px;color:#e9f8eb;background:#1d3426;padding:10px;border-left:3px solid #8fd8a5;border-radius:3px;line-height:1.5}
+.lidar50-result:empty{display:none}
+.lidar50-details{font-size:12px;color:#afc5b4;padding-top:6px;margin-top:0}
+.lidar50-details summary{font-size:12px;color:#b9e6c8;margin-bottom:4px}
+#selectedSample .lidar50-panel{margin-top:12px}
+@media(max-width:690px),(max-height:520px) and (pointer:coarse){.popup{width:min(430px,calc(100% - 16px));padding:11px 7px 10px 11px}}
+.lidar50-panel{gap:8px;margin-top:10px;padding:11px 0 2px;font-size:13px;line-height:1.4}
+.lidar50-top{display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.lidar50-top strong{font-size:14px;line-height:1.3}
+.lidar50-sheet{font-size:12px;font-weight:650;letter-spacing:0;color:#e5f5ea;background:#274233;border:1px solid #446952;border-radius:4px;padding:5px 7px;line-height:1.25}
+.lidar50-primary{font-size:13px;min-height:39px;padding:9px 12px}
+.lidar50-search{gap:8px 14px;align-items:center}
+.lidar50-search a{font-size:12px}
+.lidar50-copy{font:inherit;font-size:12px;color:#b7e1c5;text-decoration:underline;border:0;background:transparent;padding:4px 0;min-height:26px;cursor:pointer;text-align:left}
+.lidar50-copy:hover{color:#e7fbe9}
+.lidar50-result{font-size:13px;padding:8px 10px;line-height:1.45}
+.lidar50-options{width:100%;margin-top:1px;padding-top:7px;border-top:1px solid #3b5644}
+.lidar50-options summary{font-size:12px;font-weight:600;margin-bottom:0;color:#c0e3ca}
+.lidar50-options[open] summary{margin-bottom:9px}
+.lidar50-options-body{display:flex;flex-direction:column;gap:8px;padding-bottom:3px;font-size:12px}
+.lidar50-options-body .lidar50-help{font-size:12px;line-height:1.4;color:#b8d2c0}
+.lidar50-file{font-size:11px;color:#b6caba;overflow-wrap:anywhere}
+.lidar50-toolrow{display:flex;align-items:stretch;flex-wrap:wrap;gap:7px}
+.lidar50-toolrow .lidar50-action{flex:1 1 130px;font-size:12px;min-height:35px;padding:7px 8px}
+.lidar50-options-body .lidar50-change{font-size:12px;min-height:24px}
+.lidar50-coverage-status{font-size:12px;color:#b8d9c5;overflow-wrap:anywhere}
+.lidar50-coverage-status:empty{display:none}
+.lidar50-coordinates{color:#9bb7a7;font-size:11px;overflow-wrap:anywhere}

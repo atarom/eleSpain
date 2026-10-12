@@ -1,4 +1,5 @@
 import OlMap from 'https://esm.sh/ol@10.7.0/Map.js';
+import {lidar50Control} from './lidar50.js';
 import View from 'https://esm.sh/ol@10.7.0/View.js';
 import TileLayer from 'https://esm.sh/ol@10.7.0/layer/Tile.js';
 import VectorLayer from 'https://esm.sh/ol@10.7.0/layer/Vector.js';
@@ -70,6 +71,7 @@ const timeElements={postpass:'timePostpass',setup:'timeSetup',prepare:'timePrepa
 const featureSource=new VectorSource({wrapX:false});
 const selectionSource=new VectorSource({wrapX:false});
 let selectedQaFeature=null;
+let itemLidarPoint=null;
 const base=new TileLayer({source:new OSM({crossOrigin:'anonymous'}),className:'ol-layer dark-base-layer'});
 const shadeSource=new VectorSource({wrapX:false});
 const shadeLayer=new VectorLayer({source:shadeSource,style:new Style({fill:new Fill({color:'rgba(3,12,9,0.72)'})}),zIndex:3});
@@ -86,7 +88,16 @@ let drawingEnabled=false;
 let selectedDraw=0;
 const drawLayer=new VectorLayer({source:drawVector,zIndex:9,style:f=>{if(f.get('drawKind')==='line')return new Style({stroke:new Stroke({color:'#ffc66d',width:3})});const active=f.get('drawSelected');return new Style({image:new CircleStyle({radius:active?9:6,fill:new Fill({color:active?'#f5f3e8':'#ffc66d'}),stroke:new Stroke({color:active?'#e05ba7':'#19271e',width:active?3:2})})});}});
 const itemLayer=new VectorLayer({source:itemVector,zIndex:6,style:f=>{const kind=f.get('itemKind');if(kind==='line')return new Style({stroke:new Stroke({color:'#73e0ad',width:4})});return new Style({image:new CircleStyle({radius:kind==='active'?8:6,fill:new Fill({color:kind==='active'?'#f9c66d':'#a0f0bf'}),stroke:new Stroke({color:'#0d2719',width:2})})});}});
-const map=new OlMap({target:'map',layers:[base,shadeLayer,borderLayer,resultLayer,itemLayer,drawLayer,nearbyLayer,selectionLayer],view:new View({center:fromLonLat([-3.7,40.25]),zoom:6.5,maxZoom:19,extent:transformExtent([-25,22,12,49],'EPSG:4326','EPSG:3857')}),controls:undefined});
+const lidarFootprintSource=new VectorSource({wrapX:false});
+const lidarFootprintLayer=new VectorLayer({source:lidarFootprintSource,zIndex:16,style:new Style({fill:new Fill({color:'rgba(24,210,240,0.12)'}),stroke:new Stroke({color:'#50e1f5',width:3,lineDash:[10,5]})})});
+const map=new OlMap({target:'map',layers:[base,shadeLayer,borderLayer,resultLayer,itemLayer,drawLayer,nearbyLayer,lidarFootprintLayer,selectionLayer],view:new View({center:fromLonLat([-3.7,40.25]),zoom:6.5,maxZoom:19,extent:transformExtent([-25,22,12,49],'EPSG:4326','EPSG:3857')}),controls:undefined});
+function showLidarFootprint(ring,zoom=true){
+const geometry=new Polygon([ring.map(coordinates=>fromLonLat(coordinates))]);
+lidarFootprintSource.clear();
+lidarFootprintSource.addFeature(new Feature({geometry}));
+if(zoom)map.getView().fit(geometry.getExtent(),{size:map.getSize(),padding:[65,65,65,65],maxZoom:16,duration:280});
+}
+function hideLidarFootprint(){lidarFootprintSource.clear();}
 function status(msg){$('status').textContent=msg;}
 function count(n){return Number(n).toLocaleString('es-ES');}
 function formatTime(ms){return ms<1000?`${Math.round(ms)} ms`:`${(ms/1000).toLocaleString('es-ES',{minimumFractionDigits:1,maximumFractionDigits:1})} s`;}
@@ -377,7 +388,7 @@ $('popupClose').addEventListener('click',clearQaSelection);
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!popup.hidden)clearQaSelection();});
 map.on('singleclick',event=>{
 if(currentTool==='draw'){handleDrawClick(event);return;}
-if(currentTool==='item'){if(nearbyEnabled){searchNearby(event.coordinate);return;}if(!itemProfile)return;let hit=false;map.forEachFeatureAtPixel(event.pixel,()=>{hit=true;return true;},{layerFilter:layer=>layer===itemLayer,hitTolerance:7});if(!hit)return;const projected=event.coordinate;let index=-1;let distance=Infinity;for(let j=0;j<itemProfile.samples.length;j++){const p=itemProfile.samples[j];const xy=fromLonLat([p.lon,p.lat]);const d=(xy[0]-projected[0])**2+(xy[1]-projected[1])**2;if(d<distance){distance=d;index=j;}}if(index>=0)selectSample(index,false);return;}
+if(currentTool==='item'){if(nearbyEnabled){searchNearby(event.coordinate);return;}let hit=false;map.forEachFeatureAtPixel(event.pixel,()=>{hit=true;return true;},{layerFilter:layer=>layer===itemLayer,hitTolerance:7});if(!hit)return;if(!itemProfile){if(itemLidarPoint)showLidarPopup(itemLidarPoint,'Nodo OSM');return;}const projected=event.coordinate;let index=-1;let distance=Infinity;for(let j=0;j<itemProfile.samples.length;j++){const p=itemProfile.samples[j];const xy=fromLonLat([p.lon,p.lat]);const d=(xy[0]-projected[0])**2+(xy[1]-projected[1])**2;if(d<distance){distance=d;index=j;}}if(index>=0){selectSample(index,false);showLidarPopup(itemProfile.samples[index],`Nodo OSM ${itemProfile.samples[index].id||''}`);}return;}
 let hit=null;
 map.forEachFeatureAtPixel(event.pixel,f=>{if(f.get('diff')!==undefined){hit=f;return true;}return false;},{hitTolerance:6,layerFilter:l=>l===resultLayer});
 if(!hit){clearQaSelection();return;}
@@ -390,9 +401,19 @@ const heading=document.createElement('strong');
 heading.textContent=`${kind} ${p.id}`;
 body.append(heading,document.createElement('br'));
 for(const [key,value] of [['ele OSM',p.osmEle+' m'],[`MDT05 ${sources[p.source]}`,p.mdt.toFixed(1)+' m'],['Diferencia absoluta',p.diff.toFixed(2)+' m'],['ele OSM − MDT05',p.signed.toFixed(2)+' m']]){const row=document.createElement('div');row.textContent=`${key}: ${value}`;body.append(row);}
-const actions=document.createElement('div');actions.className='popup-actions';for(const [label,url] of [['Ver en OSM',`https://www.openstreetmap.org/${kind}/${p.id}`],['Editar en iD',`https://www.openstreetmap.org/edit?${kind}=${p.id}`]]){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';actions.append(a);}body.append(actions);
+const actions=document.createElement('div');actions.className='popup-actions';for(const [label,url] of [['Ver en OSM',`https://www.openstreetmap.org/${kind}/${p.id}`],['Editar en iD',`https://www.openstreetmap.org/edit?${kind}=${p.id}`]]){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';actions.append(a);}body.append(actions,lidar50Control({lat:p.lat,lon:p.lon,ensureGeoTiff,osmEle:p.osmEle,showCoverage:showLidarFootprint,hideCoverage:hideLidarFootprint}));
 popup.hidden=false;
 });
+function showLidarPopup(point,label){
+selectedQaFeature=null;
+selectionSource.clear();
+const body=$('popupBody');
+body.replaceChildren();
+const heading=document.createElement('strong');
+heading.textContent=label;
+body.append(heading,lidar50Control({lat:point.lat,lon:point.lon,ensureGeoTiff,showCoverage:showLidarFootprint,hideCoverage:hideLidarFootprint}));
+popup.hidden=false;
+}
 async function init(){
 try{
 status('Cargando cobertura del MDT05…');
@@ -491,7 +512,7 @@ $('nearbyStatus').textContent=`Seleccionado: ${element.type==='node'?'nodo':'ví
 analyzeItem();
 }
 $('nearbyToggle').addEventListener('click',()=>{if(busy)return;if(nearbyEnabled){disableNearby(false);$('nearbyStatus').textContent='Selección desde el mapa desactivada.';}else{nearbyEnabled=true;$('nearbyStatus').textContent='Pulsa en el mapa para buscar nodos etiquetados y vías próximos. Zoom mínimo: 14.';updateNearbyToggle();if(compactLayout.matches)displayTools(false);}});
-function clearItem(){itemProfile=null;activeSampleStyle=null;itemVector.clear();$('resultsPanel').classList.remove('profile-open');$('profileResults').hidden=true;$('itemSummary').replaceChildren(document.createTextNode('Consulta un nodo o una vía para mostrar sus elevaciones.'));$('elevationChart').replaceChildren();$('selectedSample').textContent='Selecciona un punto para ver sus datos.';}
+function clearItem(){itemLidarPoint=null;popup.hidden=true;itemProfile=null;activeSampleStyle=null;itemVector.clear();$('resultsPanel').classList.remove('profile-open');$('profileResults').hidden=true;$('itemSummary').replaceChildren(document.createTextNode('Consulta un nodo o una vía para mostrar sus elevaciones.'));$('elevationChart').replaceChildren();$('selectedSample').textContent='Selecciona un punto para ver sus datos.';}
 function apiUrl(kind,id,version='latest'){return `https://www.openstreetmap.org/api/0.6/${kind}/${id}${version==='latest'?'':`/${version}`}.json`;}
 async function loadOSM(kind,id,version,signal){
 if(kind==='way'&&version==='latest'){
@@ -609,6 +630,7 @@ const mdt=terrain.heights[0];
 container.append(itemCard('ele=* en OSM',ele==null?'No definido / inválido':formatHeight(ele)),itemCard(`MDT05 ${sourceName()}`,formatHeight(mdt)),itemCard('ele OSM − MDT05',ele!=null&&mdt!=null?formatHeight(ele-mdt):'—'));
 }else container.append(itemCard('Nodos OSM',count(detail.nodes)),itemCard('Elevaciones válidas',count(terrain.heights.filter(Number.isFinite).length)),itemCard('Distancia',`${(detail.distance/1000).toLocaleString('es-ES',{maximumFractionDigits:2})} km`),itemCard('Fuente del MDT',sourceName()));
 const link=document.createElement('a');link.href=`https://www.openstreetmap.org/${type}/${id}`;link.target='_blank';link.rel='noopener noreferrer';link.textContent='Ver en OSM ↗';container.append(link);
+if(type==='node')container.append(lidar50Control({lat:detail.point.lat,lon:detail.point.lon,ensureGeoTiff,osmEle:parseEle(object.tags?.ele),showCoverage:showLidarFootprint,hideCoverage:hideLidarFootprint}));
 }
 function drawItemOnMap(type,samples){
 itemVector.clear();
@@ -670,6 +692,7 @@ const link=p.id?document.createElement('a'):null;
 $('selectedSample').append(document.createTextNode(`${currentTool==='draw'?'Vértice':'Muestra'} ${count(activeSample+1)}/${count(samples.length)} · Distancia ${(distances[activeSample]/1000).toFixed(3)} km · MDT05: ${formatHeight(heights[activeSample])} · ${p.lat.toFixed(6)}, ${p.lon.toFixed(6)} `));
 if(currentTool==='draw')selectedDraw=activeSample;
 if(link){link.href=`https://www.openstreetmap.org/node/${p.id}`;link.target='_blank';link.rel='noopener noreferrer';link.textContent=`· Nodo ${p.id} ↗`;$('selectedSample').append(link);}
+if(currentTool==='item')$('selectedSample').append(lidar50Control({lat:p.lat,lon:p.lon,ensureGeoTiff,showCoverage:showLidarFootprint,hideCoverage:hideLidarFootprint}));
 if(center)map.getView().animate({center:fromLonLat([p.lon,p.lat]),duration:250});
 drawProfile();
 }
@@ -784,7 +807,8 @@ itemStatus(`${count(samples.length)} puntos. Consultando ${sourceName()}…`);
 const terrain=await queryTerrain(samples,source,signal,(done,total,fail)=>itemStatus(`Leyendo MDT05: ${count(done)}/${count(total)} unidades${fail?` · ${fail} errores`:''}…`));
 if(signal.aborted)throw new DOMException('Cancelado','AbortError');
 const totalDistance=kind==='node'?0: samples.reduce((sum,p,i)=>i?sum+distanceMeters(samples[i-1],p):sum,0);
-renderItemSummary(kind,id,version,data.object,terrain,{nodes:data.samples.length,samples:samples.length,distance:totalDistance});
+itemLidarPoint=kind==='node'?samples[0]:null;
+renderItemSummary(kind,id,version,data.object,terrain,{nodes:data.samples.length,samples:samples.length,distance:totalDistance,point:samples[0]});
 drawItemOnMap(kind,samples);
 if(kind==='way')showProfile(samples,terrain.heights);
 itemStatus(`Listo · ${count(terrain.heights.filter(Number.isFinite).length)}/${count(samples.length)} cotas MDT05 · ${formatTime(performance.now()-started)} · ${terrain.units} unidades · ${terrain.failures} errores.`);
