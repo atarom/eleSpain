@@ -58,7 +58,7 @@ if(![west,south,east,north].every(Number.isFinite)||west>=east||south>=north)thr
 const crs=projection(image);
 return [[west,south],[east,south],[east,north],[west,north],[west,south]].map(coords=>window.proj4(crs,'EPSG:4326',coords));
 }
-async function readLidar(image,lon,lat){
+function pixelPosition(image,lon,lat){
 const coords=window.proj4('EPSG:4326',projection(image),[lon,lat]);
 const [ox,oy]=image.getOrigin();
 const [rx,ry]=image.getResolution();
@@ -66,6 +66,10 @@ if(!Number.isFinite(rx)||!Number.isFinite(ry)||rx===0||ry===0)throw Error('Georr
 const col=Math.floor((coords[0]-ox)/rx);
 const row=Math.floor((coords[1]-oy)/ry);
 if(col<0||row<0||col>=image.getWidth()||row>=image.getHeight())throw Error('El GeoTIFF seleccionado no cubre estas coordenadas.');
+return {col,row};
+}
+async function readLidar(image,lon,lat){
+const {col,row}=pixelPosition(image,lon,lat);
 const raster=await image.readRasters({window:[col,row,col+1,row+1],samples:[0]});
 const value=Number(raster[0][0]);
 const nodataRaw=image.getGDALNoData?.();
@@ -98,7 +102,7 @@ const id=document.createElement('span');
 id.className='lidar50-sheet';
 id.textContent=code?`Hoja ${code}`:sheet?'Hoja por identificar':'Fuera del ámbito';
 head.append(title,id);
-const button=createButton('Consultar altitud LiDAR',()=>{if(lastFile){consult(lastFile);return;}choose('consult');},'lidar50-primary');
+const button=createButton('Consultar altitud LiDAR',()=>{if(lastFile&&cachedCoversPoint()){consult(lastFile);return;}choose('consult');},'lidar50-primary');
 const result=document.createElement('div');
 result.className='lidar50-result';
 result.setAttribute('role','status');
@@ -145,6 +149,13 @@ input.type='file';
 input.accept='.tif,.tiff,image/tiff';
 input.hidden=true;
 let selectionMode='consult';
+function cachedCoversPoint(){
+if(!lastFile||!lastImage||!window.proj4)return false;
+try{pixelPosition(lastImage,lon,lat);return true;}catch(error){return false;}
+}
+function updateSelectionAction(){
+button.textContent=lastFile&&!cachedCoversPoint()?'Seleccionar TIFF de esta hoja':'Consultar altitud LiDAR';
+}
 function choose(mode){selectionMode=mode;input.click();}
 input.addEventListener('change',()=>{
 const file=input.files?.[0];
@@ -165,7 +176,7 @@ const image=await openLidar(file,ensureGeoTiff);
 selected.textContent=`TIFF: ${file.name}`;
 showFootprint(file,image,true);
 }catch(error){coverageStatus.textContent=`No se pudo dibujar: ${error.message}`;}
-finally{coverage.disabled=false;}
+finally{coverage.disabled=false;updateSelectionAction();}
 }
 async function consult(file){
 button.disabled=true;
@@ -173,17 +184,20 @@ result.textContent='Leyendo el TIFF…';
 try{
 const image=await openLidar(file,ensureGeoTiff);
 selected.textContent=`TIFF: ${file.name}`;
-showFootprint(file,image);
 const sample=await readLidar(image,lon,lat);
+showFootprint(file,image);
 const fileCode=readName(file);
 const warning=code&&fileCode&&fileCode!==code?` · Aviso: TIFF ${fileCode}, hoja calculada ${code}.`:'';
 if(sample.value===null){result.textContent=`Sin datos de elevación en este píxel.${warning}`;return;}
 const altitude=sample.value.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
 const diff=Number.isFinite(osmEle)?` · Diferencia con OSM: ${(osmEle-sample.value).toLocaleString('es-ES',{maximumFractionDigits:2})} m`:'';
 result.textContent=`Altitud LiDAR: ${altitude} m${diff}${warning}`;
-}catch(error){result.textContent=`No se pudo consultar: ${error.message}`;}
-finally{button.disabled=false;}
+}catch(error){
+const outside=error.message==='El GeoTIFF seleccionado no cubre estas coordenadas.';
+result.textContent=outside?`El TIFF seleccionado no cubre este elemento. Selecciona el archivo de la hoja ${code||'correspondiente'}.`:`No se pudo consultar: ${error.message}`;
+}finally{button.disabled=false;updateSelectionAction();}
 }
 section.append(head,button,result,search,options,input);
+updateSelectionAction();
 return section;
 }
