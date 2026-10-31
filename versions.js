@@ -1,4 +1,4 @@
-window.eleSpainVersions=Object.freeze({ol:'10.7.0',geotiff:'3.0.5',proj4:'2.22.0'});
+window.eleSpainVersions=Object.freeze({ol:'10.11.0',geotiff:'3.0.5',proj4:'2.22.0'});
 const olImportMap=document.createElement('script');
 olImportMap.type='importmap';
 olImportMap.textContent=JSON.stringify({imports:{'ol/':`https://esm.sh/ol@${window.eleSpainVersions.ol}/`}});
