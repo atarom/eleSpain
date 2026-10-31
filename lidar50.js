@@ -22,7 +22,7 @@ async function ensureProj4(){
 if(window.proj4)return window.proj4;
 if(!loadingProj4)loadingProj4=new Promise((resolve,reject)=>{
 const script=document.createElement('script');
-script.src='https://cdn.jsdelivr.net/npm/proj4@2.22.0/dist/proj4.js';
+script.src=`https://cdn.jsdelivr.net/npm/proj4@${window.eleSpainVersions.proj4}/dist/proj4.js`;
 script.onload=()=>window.proj4?resolve(window.proj4):reject(Error('La biblioteca de proyecciones no está disponible.'));
 script.onerror=()=>reject(Error('No se pudo cargar proj4.js.'));
 document.head.append(script);

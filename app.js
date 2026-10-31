@@ -1,20 +1,20 @@
-import OlMap from 'https://esm.sh/ol@10.7.0/Map.js';
+import OlMap from 'ol/Map.js';
 import {lidar50Control} from './lidar50.js';
-import View from 'https://esm.sh/ol@10.7.0/View.js';
-import TileLayer from 'https://esm.sh/ol@10.7.0/layer/Tile.js';
-import VectorLayer from 'https://esm.sh/ol@10.7.0/layer/Vector.js';
-import WebGLVectorLayer from 'https://esm.sh/ol@10.7.0/layer/WebGLVector.js';
-import OSM from 'https://esm.sh/ol@10.7.0/source/OSM.js';
-import VectorSource from 'https://esm.sh/ol@10.7.0/source/Vector.js';
-import GeoJSON from 'https://esm.sh/ol@10.7.0/format/GeoJSON.js';
-import Feature from 'https://esm.sh/ol@10.7.0/Feature.js';
-import Point from 'https://esm.sh/ol@10.7.0/geom/Point.js';
-import LineString from 'https://esm.sh/ol@10.7.0/geom/LineString.js';
-import CircleStyle from 'https://esm.sh/ol@10.7.0/style/Circle.js';
-import TextStyle from 'https://esm.sh/ol@10.7.0/style/Text.js';
-import Polygon from 'https://esm.sh/ol@10.7.0/geom/Polygon.js';
-import {Fill,Stroke,Style} from 'https://esm.sh/ol@10.7.0/style.js';
-import {fromLonLat,toLonLat,transformExtent} from 'https://esm.sh/ol@10.7.0/proj.js';
+import View from 'ol/View.js';
+import TileLayer from 'ol/layer/Tile.js';
+import VectorLayer from 'ol/layer/Vector.js';
+import WebGLVectorLayer from 'ol/layer/WebGLVector.js';
+import OSM from 'ol/source/OSM.js';
+import VectorSource from 'ol/source/Vector.js';
+import GeoJSON from 'ol/format/GeoJSON.js';
+import Feature from 'ol/Feature.js';
+import Point from 'ol/geom/Point.js';
+import LineString from 'ol/geom/LineString.js';
+import CircleStyle from 'ol/style/Circle.js';
+import TextStyle from 'ol/style/Text.js';
+import Polygon from 'ol/geom/Polygon.js';
+import {Fill,Stroke,Style} from 'ol/style.js';
+import {fromLonLat,toLonLat,transformExtent} from 'ol/proj.js';
 const $=id=>document.getElementById(id);
 const ignUrl='https://xyz-mdt.idee.es/1.0.0/raster-dem';
 const cogUrl='https://huggingface.co/datasets/aTaromOCD/Spain_MDT05_INT16_WGS84/resolve/main/Spain_MDT05_INT16_WGS84.tif';
@@ -161,7 +161,7 @@ function checkPosition(pos,source,raster){return source==='ign'?pos.tx>=0&&pos.t
 function positionKey(pos,source){return source==='ign'?`${pos.zoom}:${pos.tx}:${pos.ty}`:`${pos.bx}:${pos.by}`;}
 async function ensureGeoTiff(){
 if(window.GeoTIFF)return;
-if(!loadingGeoTiff)loadingGeoTiff=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/geotiff@3.0.5/dist-browser/geotiff.js';script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar geotiff.js'));document.head.appendChild(script);}).catch(err=>{loadingGeoTiff=null;throw err;});
+if(!loadingGeoTiff)loadingGeoTiff=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=`https://cdn.jsdelivr.net/npm/geotiff@${window.eleSpainVersions.geotiff}/dist-browser/geotiff.js`;script.onload=resolve;script.onerror=()=>reject(Error('No se pudo cargar geotiff.js'));document.head.appendChild(script);}).catch(err=>{loadingGeoTiff=null;throw err;});
 await loadingGeoTiff;
 }
 async function ensureCOG(){
